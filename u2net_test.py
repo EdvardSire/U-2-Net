@@ -7,11 +7,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms#, utils
+from pathlib import Path
 # import torch.optim as optim
 
 import numpy as np
 from PIL import Image
-import glob
+import cv2
 
 from data_loader import RescaleT
 from data_loader import ToTensor
@@ -20,6 +21,14 @@ from data_loader import SalObjDataset
 
 from model import U2NET # full size version 173.6 MB
 from model import U2NETP # small version u2net 4.7 MB
+
+
+def show(img, name = "window"):
+    cv2.namedWindow(name, cv2.WINDOW_NORMAL)
+    cv2.imshow(name, img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
 
 # normalize the predicted SOD probability map
 def normPRED(d):
@@ -58,11 +67,11 @@ def main():
 
 
 
-    image_dir = os.path.join(os.getcwd(), 'test_data', 'test_images')
-    prediction_dir = os.path.join(os.getcwd(), 'test_data', model_name + '_results' + os.sep)
+    image_dir = Path("test_data") / "suas"
     model_dir = os.path.join(os.getcwd(), 'saved_models', model_name, model_name + '.pth')
 
-    img_name_list = glob.glob(image_dir + os.sep + '*')
+    img_name_list = list(image_dir.glob("*png"))
+
     print(img_name_list)
 
     # --------- 2. dataloader ---------
@@ -95,7 +104,7 @@ def main():
     # --------- 4. inference for each image ---------
     for i_test, data_test in enumerate(test_salobj_dataloader):
 
-        print("inferencing:",img_name_list[i_test].split(os.sep)[-1])
+        print("inferencing:",img_name_list[i_test].__str__().split(os.sep)[-1])
 
         inputs_test = data_test['image']
         inputs_test = inputs_test.type(torch.FloatTensor)
@@ -112,9 +121,12 @@ def main():
         pred = normPRED(pred)
 
         # save results to test_results folder
-        if not os.path.exists(prediction_dir):
-            os.makedirs(prediction_dir, exist_ok=True)
-        save_output(img_name_list[i_test],pred,prediction_dir)
+        predict_np = pred.cpu().data.numpy()
+        print(np.array(predict_np.shape))
+        show(predict_np.reshape(320,320))
+        
+
+        # save_output(img_name_list[i_test],pred,prediction_dir)
 
         del d1,d2,d3,d4,d5,d6,d7
 
