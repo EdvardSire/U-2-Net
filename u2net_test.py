@@ -1,4 +1,5 @@
 import os
+import sys
 from skimage import io, transform
 import torch
 import torchvision
@@ -63,7 +64,7 @@ def save_output(image_name,pred,d_dir):
 def main():
 
     # --------- 1. get image path and name ---------
-    model_name='u2net'#u2netp
+    model_name='u2netp'#u2netp
 
 
 
@@ -71,8 +72,6 @@ def main():
     model_dir = os.path.join(os.getcwd(), 'saved_models', model_name, model_name + '.pth')
 
     img_name_list = list(image_dir.glob("*png"))
-
-    print(img_name_list)
 
     # --------- 2. dataloader ---------
     #1. dataloader
@@ -113,7 +112,9 @@ def main():
             inputs_test = Variable(inputs_test.cuda())
         else:
             inputs_test = Variable(inputs_test)
-
+        
+        print(inputs_test.shape)
+        sys.stdout.flush()
         d1,d2,d3,d4,d5,d6,d7= net(inputs_test)
 
         # normalization
