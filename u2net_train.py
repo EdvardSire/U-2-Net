@@ -42,7 +42,7 @@ def train(dataloader,
           running_tar_loss,
           ite_num4val,
           save_frequency,
-          writer = None
+          writer = SummaryWriter()
           ):
 
     step = 0
@@ -113,7 +113,7 @@ if __name__ == "__main__":
 
 
     epoch_num = 100000
-    batch_size_train = 2
+    batch_size_train = 8
     train_num = len(train_images)
     optimizer = optim.Adam(net.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
     bce_loss = nn.BCELoss(size_average=True)
