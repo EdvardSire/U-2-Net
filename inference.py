@@ -62,24 +62,22 @@ def main():
     model_name='u2net'#u2netp
 
     image_dir = Path("training_data") / "test" / "images"
+    image_dir = Path("../suas24_classification_benchmark/test_data/")
     
-    model_path = Path("u2netu2net_bce_itr_70000_train_0.191023_tar_0.016977.pth")
-    image_paths = list(image_dir.glob("*jpg"))
+    image_paths = list(image_dir.glob("*png"))
 
 
 
     test_salobj_dataset = SalObjDataset(image_paths = image_paths,
                                         mask_paths = [],
-                                        transform=transforms.Compose([RescaleT(320),
+                                        transform=transforms.Compose([RescaleT(200),
                                                                       ToTensorLab(flag=0)])
                                         )
-    test_salobj_dataloader = DataLoader(test_salobj_dataset,
-                                        batch_size=1,
-                                        shuffle=False,
-                                        num_workers=1)
+    test_salobj_dataloader = DataLoader(test_salobj_dataset, batch_size=1, shuffle=False, num_workers=1)
 
     net = U2NET(3, 1) if(model_name=='u2net') else U2NETP(3,1)
 
+    model_path = Path("first_suas_model.pth")
     if torch.cuda.is_available():
         net.load_state_dict(torch.load(("saved_models" / model_path)))
         net.cuda()
@@ -107,13 +105,13 @@ def main():
         pred = d1[:,0,:,:]
         pred = normPRED(pred)
 
-        # save results to test_results folder
         predict_np = pred.cpu().data.numpy()
         show(cv2.imread(image_paths[i].__str__()))
-        show(predict_np.reshape(320,320))
-        
-
-        # save_output(img_name_list[i_test],pred,prediction_dir)
+        predict = predict_np.reshape(200,200)
+        predict = cv2.normalize(predict, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U) # pyright: ignore
+        print(predict)
+        _, predict = cv2.threshold(predict, 0, 255, cv2.THRESH_OTSU)
+        show(predict)
 
         del d1,d2,d3,d4,d5,d6,d7
 
