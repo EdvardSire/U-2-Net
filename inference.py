@@ -2,14 +2,10 @@ import os
 import sys
 from skimage import io, transform
 import torch
-import torchvision
 from torch.autograd import Variable
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms#, utils
+from torch.utils.data import DataLoader
+from torchvision import transforms
 from pathlib import Path
-# import torch.optim as optim
 
 import numpy as np
 from PIL import Image
@@ -26,6 +22,7 @@ from model import U2NETP # small version u2net 4.7 MB
 
 def show(img, name = "window"):
     cv2.namedWindow(name, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(name, 400, 400)
     cv2.imshow(name, img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
@@ -65,12 +62,14 @@ def main():
     model_name='u2net'#u2netp
 
     image_dir = Path("training_data") / "test" / "images"
-    model_path = Path("u2netu2net_bce_itr_176000_train_3.440201_tar_0.490283.pth")
+    
+    model_path = Path("u2netu2net_bce_itr_70000_train_0.191023_tar_0.016977.pth")
     image_paths = list(image_dir.glob("*jpg"))
 
 
-    test_salobj_dataset = SalObjDataset(img_name_list = image_paths,
-                                        lbl_name_list = [],
+
+    test_salobj_dataset = SalObjDataset(image_paths = image_paths,
+                                        mask_paths = [],
                                         transform=transforms.Compose([RescaleT(320),
                                                                       ToTensorLab(flag=0)])
                                         )
@@ -88,9 +87,9 @@ def main():
         net.load_state_dict(torch.load(("saved_models" / model_path), map_location='cpu'))
     net.eval()
 
-    for i_test, data_test in enumerate(test_salobj_dataloader):
+    for i, data_test in enumerate(test_salobj_dataloader):
 
-        print("inferencing:",image_paths[i_test].name)
+        print("inferencing:",image_paths[i].name)
 
         inputs_test = data_test['image']
         inputs_test = inputs_test.type(torch.FloatTensor)
@@ -110,6 +109,7 @@ def main():
 
         # save results to test_results folder
         predict_np = pred.cpu().data.numpy()
+        show(cv2.imread(image_paths[i].__str__()))
         show(predict_np.reshape(320,320))
         
 
