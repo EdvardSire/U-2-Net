@@ -107,8 +107,10 @@ if __name__ == "__main__":
     if torch.cuda.is_available():
         net.cuda()
 
-    train_images = list((Path("training_data") / "train" / "images").glob("*jpg"))
-    train_masks = [Path(path.__str__().replace("images", "masks")).with_suffix(".png") for path in train_images]
+    train_images = list((Path("training_data") / "SUAS" / "images").glob("*png"))
+    train_masks = [Path(path.__str__().replace("images", "shape_masks")) for path in train_images]
+    assert len(train_images) == len(train_masks)
+    assert train_images[0].exists() and train_masks[0].exists()
 
 
     epoch_num = 100000
@@ -125,20 +127,21 @@ if __name__ == "__main__":
         img_name_list=train_images,
         lbl_name_list=train_masks,
         transform=transforms.Compose([
-            RescaleT(320),
-            RandomCrop(288),
+            RescaleT(200),
+            # RandomCrop(190),
             ToTensorLab(flag=0)]))
     dataloader = DataLoader(dataset, batch_size=batch_size_train, shuffle=True, num_workers=4)
 
     LOGDIR=Path("runs")
     LOGDIR.mkdir(exist_ok=True)
-    paths = [path for path in LOGDIR.iterdir() if path.name.startswith(net.__class__.__name__)]
+    experiment_name = "SUAS_" + net.__class__.__name__
+    paths = [path for path in LOGDIR.iterdir() if path.name.startswith(experiment_name)]
     try:
         iternum = 1+int(max([iternum.__str__().split("_")[1] for iternum in paths]))
     except:
         iternum = 1
 
-    writer = SummaryWriter(log_dir=f"runs/{net.__class__.__name__}_{iternum}")
+    writer = SummaryWriter(log_dir=f"runs/{experiment_name}_{iternum}")
 
     train(dataloader=dataloader,
     epoch_num=epoch_num,
