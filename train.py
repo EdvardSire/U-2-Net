@@ -107,9 +107,8 @@ if __name__ == "__main__":
     if torch.cuda.is_available():
         net.cuda()
 
-    train_path = Path("training_data/train")
-    train_images = list((train_path / "images").glob("*jpg"))
-    train_labels = list((train_path  / "masks").glob("*png"))
+    train_images = list((Path("training_data") / "train" / "images").glob("*jpg"))
+    train_masks = [Path(path.__str__().replace("images", "masks")).with_suffix(".png") for path in train_images_path]
 
 
     epoch_num = 100000
@@ -124,7 +123,7 @@ if __name__ == "__main__":
 
     dataset = SalObjDataset(
         img_name_list=train_images,
-        lbl_name_list=train_labels,
+        lbl_name_list=train_masks,
         transform=transforms.Compose([
             RescaleT(320),
             RandomCrop(288),

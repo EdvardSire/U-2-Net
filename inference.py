@@ -62,20 +62,14 @@ def save_output(image_name,pred,d_dir):
     imo.save(d_dir+imidx+'.png')
 
 def main():
+    model_name='u2net'#u2netp
 
-    # --------- 1. get image path and name ---------
-    model_name='u2netp'#u2netp
+    image_dir = Path("training_data") / "test" / "images"
+    model_path = Path("u2netu2net_bce_itr_176000_train_3.440201_tar_0.490283.pth")
+    image_paths = list(image_dir.glob("*jpg"))
 
 
-
-    image_dir = Path("test_data") / "suas"
-    model_dir = os.path.join(os.getcwd(), 'saved_models', model_name, model_name + '.pth')
-
-    img_name_list = list(image_dir.glob("*png"))
-
-    # --------- 2. dataloader ---------
-    #1. dataloader
-    test_salobj_dataset = SalObjDataset(img_name_list = img_name_list,
+    test_salobj_dataset = SalObjDataset(img_name_list = image_paths,
                                         lbl_name_list = [],
                                         transform=transforms.Compose([RescaleT(320),
                                                                       ToTensorLab(flag=0)])
@@ -85,25 +79,18 @@ def main():
                                         shuffle=False,
                                         num_workers=1)
 
-    # --------- 3. model define ---------
-    if(model_name=='u2net'):
-        print("...load U2NET---173.6 MB")
-        net = U2NET(3,1)
-    elif(model_name=='u2netp'):
-        print("...load U2NEP---4.7 MB")
-        net = U2NETP(3,1)
+    net = U2NET(3, 1) if(model_name=='u2net') else U2NETP(3,1)
 
     if torch.cuda.is_available():
-        net.load_state_dict(torch.load(model_dir))
+        net.load_state_dict(torch.load(("saved_models" / model_path)))
         net.cuda()
     else:
-        net.load_state_dict(torch.load(model_dir, map_location='cpu'))
+        net.load_state_dict(torch.load(("saved_models" / model_path), map_location='cpu'))
     net.eval()
 
-    # --------- 4. inference for each image ---------
     for i_test, data_test in enumerate(test_salobj_dataloader):
 
-        print("inferencing:",img_name_list[i_test].__str__().split(os.sep)[-1])
+        print("inferencing:",image_paths[i_test].name)
 
         inputs_test = data_test['image']
         inputs_test = inputs_test.type(torch.FloatTensor)
@@ -123,7 +110,6 @@ def main():
 
         # save results to test_results folder
         predict_np = pred.cpu().data.numpy()
-        print(np.array(predict_np.shape))
         show(predict_np.reshape(320,320))
         
 
