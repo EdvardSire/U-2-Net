@@ -78,7 +78,8 @@ def train(dataloader,
 
             if step % save_frequency == 0:
 
-                torch.save(net.state_dict(), model_dir.__str__() + model_name+"_bce_itr_%d_train_%3f_tar_%3f.pth" % (step, running_loss / ite_num4val, running_tar_loss / ite_num4val))
+                torch.save(net.state_dict(),
+                           Path(writer.get_logdir()) / f"model_name_bce_itr_{step}_train_{running_loss / ite_num4val:.3f}_tar_{running_tar_loss / ite_num4val:.3f}.pth")
                 running_loss = 0.0
                 running_tar_loss = 0.0
                 net.train()  # resume train
@@ -106,7 +107,7 @@ if __name__ == "__main__":
     running_loss = 0.0
     running_tar_loss = 0.0
     ite_num4val = 0
-    save_frequency = 2000
+    save_frequency = 500
 
     dataset = SalObjDataset(
         image_paths=train_images,
@@ -127,7 +128,6 @@ if __name__ == "__main__":
         iternum = 1
 
     writer = SummaryWriter(log_dir=f"runs/{experiment_name}_{iternum}")
-
     train(dataloader=dataloader,
     epoch_num=epoch_num,
     batch_size_train = batch_size_train,
