@@ -108,7 +108,7 @@ if __name__ == "__main__":
         net.cuda()
 
     train_images = list((Path("training_data") / "train" / "images").glob("*jpg"))
-    train_masks = [Path(path.__str__().replace("images", "masks")).with_suffix(".png") for path in train_images_path]
+    train_masks = [Path(path.__str__().replace("images", "masks")).with_suffix(".png") for path in train_images]
 
 
     epoch_num = 100000
@@ -119,16 +119,16 @@ if __name__ == "__main__":
     running_loss = 0.0
     running_tar_loss = 0.0
     ite_num4val = 0
-    save_frequency = 2000 # save the model every 2000 iterations
+    save_frequency = 2000
 
     dataset = SalObjDataset(
-        img_name_list=train_images,
-        lbl_name_list=train_masks,
+        image_paths=train_images,
+        mask_paths=train_masks,
         transform=transforms.Compose([
             RescaleT(320),
             RandomCrop(288),
             ToTensorLab(flag=0)]))
-    dataloader = DataLoader(dataset, batch_size=batch_size_train, shuffle=True, num_workers=4)
+    dataloader = DataLoader(dataset, batch_size=batch_size_train, shuffle=True, num_workers=1)
 
     LOGDIR=Path("runs")
     LOGDIR.mkdir(exist_ok=True)
