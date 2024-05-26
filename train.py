@@ -42,7 +42,7 @@ def train(dataloader,
           running_tar_loss,
           ite_num4val,
           save_frequency,
-          writer = SummaryWriter()
+          writer = None
           ):
 
     step = 0
@@ -56,36 +56,21 @@ def train(dataloader,
 
             inputs, labels = data['image'], data['label']
 
-            inputs = inputs.type(torch.FloatTensor)
-            labels = labels.type(torch.FloatTensor)
 
-            # wrap them in Variable
-            if torch.cuda.is_available():
-                inputs_v, labels_v = Variable(inputs.cuda(), requires_grad=False), Variable(labels.cuda(),
-                                                                                            requires_grad=False)
-            else:
-                inputs_v, labels_v = Variable(inputs, requires_grad=False), Variable(labels, requires_grad=False)
-
-            # y zero the parameter gradients
             optimizer.zero_grad()
+            d0, d1, d2, d3, d4, d5, d6 = net(inputs.type(torch.float32).cuda())
+            loss2, loss = muti_bce_loss_fusion(d0, d1, d2, d3, d4, d5, d6, labels.type(torch.float32).cuda())
 
-            # forward + backward + optimize
-            d0, d1, d2, d3, d4, d5, d6 = net(inputs_v)
-            loss2, loss = muti_bce_loss_fusion(d0, d1, d2, d3, d4, d5, d6, labels_v)
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.data.item()
+            running_tar_loss += loss2.data.item()
 
             if writer:
                 writer.add_scalar("Loss/train", loss, step)
             writer.flush()
 
-
-            loss.backward()
-            optimizer.step()
-
-            # # print statistics
-            running_loss += loss.data.item()
-            running_tar_loss += loss2.data.item()
-
-            # del temporary outputs and loss
             del d0, d1, d2, d3, d4, d5, d6, loss2, loss
 
             print("[epoch: %3d/%3d, batch: %5d/%5d, ite: %d] train loss: %3f, tar: %3f " % (
@@ -137,7 +122,7 @@ if __name__ == "__main__":
     experiment_name = "SUAS_" + net.__class__.__name__
     paths = [path for path in LOGDIR.iterdir() if path.name.startswith(experiment_name)]
     try:
-        iternum = 1+int(max([iternum.__str__().split("_")[1] for iternum in paths]))
+        iternum = 1+int(max([iternum.__str__().split("_")[-1] for iternum in paths]))
     except:
         iternum = 1
 
@@ -154,5 +139,3 @@ if __name__ == "__main__":
     save_frequency = save_frequency,
     writer=writer
     )
-
-

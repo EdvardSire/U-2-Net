@@ -234,11 +234,14 @@ class SalObjDataset(Dataset):
 
     def __getitem__(self,idx):
         image = cv2.imread(self.image_paths[idx].__str__())
+        image = image.astype(np.float32)
         imidx = np.array([idx])
 
         label = cv2.imread(self.mask_paths[idx].__str__(), cv2.IMREAD_GRAYSCALE)
+        label = label.astype(np.float32)
         label = label[:,:,np.newaxis]
 
+        
         assert 3==len(image.shape) and 3==len(label.shape)
         assert image.shape[2] == 3 and label.shape[2] == 1
 
