@@ -108,11 +108,11 @@ if __name__ == "__main__":
         net.cuda()
 
     train_images = list((Path("training_data") / "train" / "images").glob("*jpg"))
-    train_masks = [Path(path.__str__().replace("images", "masks")).with_suffix(".png") for path in train_images_path]
+    train_masks = [Path(path.__str__().replace("images", "masks")).with_suffix(".png") for path in train_images]
 
 
     epoch_num = 100000
-    batch_size_train = 8
+    batch_size_train = 32
     train_num = len(train_images)
     optimizer = optim.Adam(net.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
     bce_loss = nn.BCELoss(size_average=True)
