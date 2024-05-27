@@ -1,19 +1,13 @@
-import os
 import sys
-from skimage import io, transform
 import torch
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision.transforms import v2 as transforms
 from pathlib import Path
 
-import numpy as np
-from PIL import Image
 import cv2
 
 from data_loader import RescaleT
-from data_loader import ToTensor
-from data_loader import ToTensorLab
 from data_loader import SalObjDataset
 
 from model import U2NET # full size version 173.6 MB
@@ -37,27 +31,6 @@ def normPRED(d):
 
     return dn
 
-def save_output(image_name,pred,d_dir):
-
-    predict = pred
-    predict = predict.squeeze()
-    predict_np = predict.cpu().data.numpy()
-
-    im = Image.fromarray(predict_np*255).convert('RGB')
-    img_name = image_name.split(os.sep)[-1]
-    image = io.imread(image_name)
-    imo = im.resize((image.shape[1],image.shape[0]),resample=Image.BILINEAR)
-
-    pb_np = np.array(imo)
-
-    aaa = img_name.split(".")
-    bbb = aaa[0:-1]
-    imidx = bbb[0]
-    for i in range(1,len(bbb)):
-        imidx = imidx + "." + bbb[i]
-
-    imo.save(d_dir+imidx+'.png')
-
 def main():
     model_name='u2net'#u2netp
 
@@ -68,16 +41,22 @@ def main():
 
     test_salobj_dataset = SalObjDataset(image_paths = image_paths,
                                         mask_paths = [],
-                                        transform=transforms.Compose([RescaleT(200),
-                                                                      ToTensorLab(flag=0)])
-                                        )
-    test_salobj_dataloader = DataLoader(test_salobj_dataset,
-                                        batch_size=1,
-                                        shuffle=False,
-                                        num_workers=1)
+                                        transform=torch.nn.ModuleList([
+                                            transforms.ToImage(), # hwc -> chw
+                                            transforms.ToDtype(torch.float32, scale=True),
+                                            transforms.RandomApply(torch.nn.ModuleList([
+                                                transforms.ElasticTransform(50.0, 3.5)]), p=0.3),
+                                            transforms.RandomPhotometricDistort(),
+                                            transforms.RandomInvert(p=0.2),
+                                            transforms.RandomAdjustSharpness(sharpness_factor=0.3),
+                                            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                                            transforms.Resize((200,200))
+                                        ]))
+    test_salobj_dataloader = DataLoader(test_salobj_dataset, batch_size=1, shuffle=False, num_workers=1)
 
     net = U2NET(3, 1) if(model_name=='u2net') else U2NETP(3,1)
 
+    model_path = Path("first_suas_model.pth")
     if torch.cuda.is_available():
         #net.load_state_dict(torch.load(("saved_models" / model_path)))
         net.load_state_dict(torch.load((model_path)))
@@ -106,13 +85,12 @@ def main():
         pred = d1[:,0,:,:]
         pred = normPRED(pred)
 
-        # save results to test_results folder
         predict_np = pred.cpu().data.numpy()
         show(cv2.resize(cv2.imread(image_paths[i].__str__()), (200, 200)))
-        show(predict_np.reshape(200, 200))
-        
-
-        # save_output(img_name_list[i_test],pred,prediction_dir)
+        predict = predict_np.reshape(200,200)
+        predict = cv2.normalize(predict, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U) # pyright: ignore
+        _, predict = cv2.threshold(predict, 0, 255, cv2.THRESH_OTSU)
+        show(predict)
 
         del d1,d2,d3,d4,d5,d6,d7
 
