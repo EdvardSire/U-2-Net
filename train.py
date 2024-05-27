@@ -60,12 +60,7 @@ def train(dataloader,
             ite_num4val = ite_num4val + 1
 
             optimizer.zero_grad()
-            print(inputs.shape, labels.shape)
-            print(torch.max(inputs[0]))
-            print(torch.min(inputs[0]))
-            print()
-            print(torch.max(labels[0]).item())
-            print(torch.min(labels[0]))
+
             d0, d1, d2, d3, d4, d5, d6 = net(inputs.type(torch.float32).cuda())
             loss2, loss = muti_bce_loss_fusion(d0, d1, d2, d3, d4, d5, d6, labels.type(torch.float32).cuda())
 
