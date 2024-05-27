@@ -4,7 +4,7 @@ from skimage import io, transform
 import torch
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-from torchvision import transforms
+from torchvision.transforms import v2 as transforms
 from pathlib import Path
 
 import numpy as np
@@ -22,7 +22,7 @@ from model import U2NETP # small version u2net 4.7 MB
 
 def show(img, name = "window"):
     cv2.namedWindow(name, cv2.WINDOW_NORMAL)
-    cv2.resizeWindow(name, 400, 400)
+    cv2.resizeWindow(name, 600, 600)
     cv2.imshow(name, img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
@@ -61,16 +61,14 @@ def save_output(image_name,pred,d_dir):
 def main():
     model_name='u2net'#u2netp
 
-    image_dir = Path("training_data") / "test" / "images"
     
-    model_path = Path("u2netu2net_bce_itr_70000_train_0.191023_tar_0.016977.pth")
-    image_paths = list(image_dir.glob("*jpg"))
-
-
+    #model_path = Path("u2netu2net_bce_itr_200000_train_0.191023_tar_0.016977.pth")
+    model_path = Path("runs/SUAS_U2NET_2/model_name_bce_itr_200000_train_0.084_tar_0.001.pth")
+    image_paths = list(Path("training_data/cutout_dumps").glob("*png"))
 
     test_salobj_dataset = SalObjDataset(image_paths = image_paths,
                                         mask_paths = [],
-                                        transform=transforms.Compose([RescaleT(320),
+                                        transform=transforms.Compose([RescaleT(200),
                                                                       ToTensorLab(flag=0)])
                                         )
     test_salobj_dataloader = DataLoader(test_salobj_dataset,
@@ -81,7 +79,8 @@ def main():
     net = U2NET(3, 1) if(model_name=='u2net') else U2NETP(3,1)
 
     if torch.cuda.is_available():
-        net.load_state_dict(torch.load(("saved_models" / model_path)))
+        #net.load_state_dict(torch.load(("saved_models" / model_path)))
+        net.load_state_dict(torch.load((model_path)))
         net.cuda()
     else:
         net.load_state_dict(torch.load(("saved_models" / model_path), map_location='cpu'))
@@ -109,8 +108,8 @@ def main():
 
         # save results to test_results folder
         predict_np = pred.cpu().data.numpy()
-        show(cv2.imread(image_paths[i].__str__()))
-        show(predict_np.reshape(320,320))
+        show(cv2.resize(cv2.imread(image_paths[i].__str__()), (200, 200)))
+        show(predict_np.reshape(200, 200))
         
 
         # save_output(img_name_list[i_test],pred,prediction_dir)

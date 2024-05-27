@@ -1,11 +1,14 @@
 # data loader
-from __future__ import print_function, division
+import sys
+from skimage.util import dtype_limits
 import torch
 import numpy as np
 import random
 import cv2
 from torch.utils.data import Dataset
-from skimage import io, transform, color
+from skimage import transform, color
+from torchvision.transforms import v2 as transforms
+
 
 def show(img, name = "window"):
     cv2.namedWindow(name, cv2.WINDOW_NORMAL)
@@ -223,8 +226,26 @@ class ToTensorLab(object):
 
         return {'imidx':torch.from_numpy(imidx), 'image': torch.from_numpy(tmpImg), 'label': torch.from_numpy(tmpLbl)}
 
+class DoElasticTransform(object):
+    def __init__ (self, alpha, sigma):
+        self.custom = transforms.ElasticTransform(alpha, sigma)
+
+    def __call__(self,sample):
+        imidx, image, label = sample['imidx'], sample['image'],sample['label']
+
+        print(type(image))
+        sys.stdout.flush()
+        image = torch.tensor(image).reshape()
+        label = torch.tensor(label)
+        print(image.shape, label.shape)
+        image = self.custom(image)
+        label = self.custom(label)
+
+        return {'imidx':imidx, 'image':np.array(image),'label':np.array(label)}
+
+
 class SalObjDataset(Dataset):
-    def __init__(self,image_paths,mask_paths,transform=None):
+    def __init__(self,image_paths,mask_paths,transform=torch.nn.ModuleList()):
         self.image_paths = image_paths
         self.mask_paths = mask_paths
         self.transform = transform
@@ -233,21 +254,26 @@ class SalObjDataset(Dataset):
         return len(self.image_paths)
 
     def __getitem__(self,idx):
-        image = cv2.imread(self.image_paths[idx].__str__())
-        image = image.astype(np.float32)
-        imidx = np.array([idx])
+        images = cv2.imread(self.image_paths[idx].__str__())
 
-        label = cv2.imread(self.mask_paths[idx].__str__(), cv2.IMREAD_GRAYSCALE)
-        label = label.astype(np.float32)
-        label = label[:,:,np.newaxis]
+        if self.mask_paths == []:
+            labels = np.zeros((1,1,1), dtype=np.uint8) # only for inference
+        else:
+            labels = cv2.imread(self.mask_paths[idx].__str__(), cv2.IMREAD_GRAYSCALE)
+            labels = labels[:,:,np.newaxis]
 
-        
-        assert 3==len(image.shape) and 3==len(label.shape)
-        assert image.shape[2] == 3 and label.shape[2] == 1
+        assert 3==len(images.shape) and 3==len(labels.shape)
+        assert images.shape[2] == 3 and labels.shape[2] == 1
 
-        sample = {'imidx':imidx, 'image':image, 'label':label}
+        for transform in self.transform:
+            if isinstance(transform, transforms.RandomPhotometricDistort) or \
+               isinstance(transform, transforms.Normalize) or \
+               isinstance(transform, transforms.RandomInvert):
+                images = transform(images)
+                continue 
 
-        if self.transform:
-            sample = self.transform(sample)
+            images, labels = transform((images, labels))
 
-        return sample
+        # rip v2.resize, goes over 1.000
+        return images, torch.clamp(labels, min=0, max=1) # pyright: ignore
+

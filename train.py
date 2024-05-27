@@ -1,21 +1,26 @@
+from skimage.color import lab2lch
 import torch
+import cv2
 import torch.optim as optim
 import torch.nn as nn
-from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torch.utils.tensorboard.writer import SummaryWriter
 
 from pathlib import Path
 
-from data_loader import RescaleT
-from data_loader import RandomCrop
-from data_loader import ToTensorLab
+from torchvision.transforms import v2 as transforms
 from data_loader import SalObjDataset
 
 from model import U2NET
 from model import U2NETP
 
+def show(img, name = "window"):
+    cv2.namedWindow(name, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(name, 800, 800)
+    cv2.imshow(name, img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 def muti_bce_loss_fusion(d0, d1, d2, d3, d4, d5, d6, labels_v):
 
@@ -42,7 +47,7 @@ def train(dataloader,
           running_tar_loss,
           ite_num4val,
           save_frequency,
-          writer = None
+          writer: SummaryWriter | None = None
           ):
 
     step = 0
@@ -50,14 +55,17 @@ def train(dataloader,
     for epoch in range(0, epoch_num):
         net.train()
 
-        for i, data in enumerate(dataloader):
+        for i, (inputs, labels) in enumerate(dataloader):
             step = step + 1
             ite_num4val = ite_num4val + 1
 
-            inputs, labels = data['image'], data['label']
-
-
             optimizer.zero_grad()
+            print(inputs.shape, labels.shape)
+            print(torch.max(inputs[0]))
+            print(torch.min(inputs[0]))
+            print()
+            print(torch.max(labels[0]).item())
+            print(torch.min(labels[0]))
             d0, d1, d2, d3, d4, d5, d6 = net(inputs.type(torch.float32).cuda())
             loss2, loss = muti_bce_loss_fusion(d0, d1, d2, d3, d4, d5, d6, labels.type(torch.float32).cuda())
 
@@ -69,7 +77,7 @@ def train(dataloader,
 
             if writer:
                 writer.add_scalar("Loss/train", loss, step)
-            writer.flush()
+                writer.flush()
 
             del d0, d1, d2, d3, d4, d5, d6, loss2, loss
 
@@ -112,11 +120,26 @@ if __name__ == "__main__":
     dataset = SalObjDataset(
         image_paths=train_images,
         mask_paths=train_masks,
-        transform=transforms.Compose([
-            RescaleT(200),
-            # RandomCrop(190),
-            ToTensorLab(flag=0)]))
+        transform=torch.nn.ModuleList([
+            transforms.ToImage(), # hwc -> chw
+            transforms.ToDtype(torch.float32, scale=True),
+            transforms.RandomApply(torch.nn.ModuleList([
+                transforms.ElasticTransform(50.0, 3.5)]), p=0.3),
+            transforms.RandomPhotometricDistort(),
+            transforms.RandomInvert(p=0.2),
+            transforms.RandomAdjustSharpness(sharpness_factor=0.3),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            transforms.Resize((200,200)),
+            ]))
     dataloader = DataLoader(dataset, batch_size=batch_size_train, shuffle=True, num_workers=1)
+
+    # dataloader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=1)
+    # for images, labels in dataloader:
+    #     inputs = images.numpy()[0].transpose(1,2,0)
+    #     labels = labels.numpy()[0].transpose(1,2,0)
+    #     show(inputs)
+    #     show(labels)
+    # exit()
 
     LOGDIR=Path("runs")
     LOGDIR.mkdir(exist_ok=True)
