@@ -10,10 +10,11 @@ from torch.utils.tensorboard.writer import SummaryWriter
 from pathlib import Path
 
 from torchvision.transforms import v2 as transforms
-from data_loader import SalObjDataset
+from data_loader import SalObjDataset, RandomNoise, RandomDeleteRows
 
 from model import U2NET
 from model import U2NETP
+
 
 def show(img, name = "window"):
     cv2.namedWindow(name, cv2.WINDOW_NORMAL)
@@ -121,19 +122,26 @@ if __name__ == "__main__":
             transforms.RandomApply(torch.nn.ModuleList([
                 transforms.ElasticTransform(50.0, 4.0)]), p=0.3),
             transforms.RandomPhotometricDistort(),
-            # transforms.RandomInvert(p=0.2),
             transforms.RandomAdjustSharpness(sharpness_factor=0.3),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            RandomNoise(p=0.5, sigma=0.1),
+            RandomDeleteRows(p=0.5, mu=5, sigma=20),
+            RandomDeleteRows(p=0.5, mu=5, sigma=20),
+            RandomDeleteRows(p=0.5, mu=5, sigma=20),
+            RandomDeleteRows(p=0.5, mu=5, sigma=20),
             transforms.Resize((200,200)),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ]))
-    dataloader = DataLoader(dataset, batch_size=batch_size_train, shuffle=True, num_workers=1)
+    dataloader = DataLoader(dataset, batch_size=batch_size_train, shuffle=True, num_workers=4)
 
-    # dataloader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=1)
+    #dataloader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=1)
     # for images, labels in dataloader:
     #     inputs = images.numpy()[0].transpose(1,2,0)
     #     labels = labels.numpy()[0].transpose(1,2,0)
-    #     show(inputs)
-    #     show(labels)
+    #     print(inputs.shape, labels.shape)
+    #     assert inputs.shape[:2] == (200, 200)
+    #     assert labels.shape[:2] == (200, 200)
+    #     #show(inputs)
+    #     #show(labels)
     # exit()
 
     LOGDIR=Path("runs")
