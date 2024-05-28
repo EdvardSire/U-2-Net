@@ -119,9 +119,9 @@ if __name__ == "__main__":
             transforms.ToImage(), # hwc -> chw
             transforms.ToDtype(torch.float32, scale=True),
             transforms.RandomApply(torch.nn.ModuleList([
-                transforms.ElasticTransform(50.0, 3.5)]), p=0.3),
+                transforms.ElasticTransform(50.0, 4.0)]), p=0.3),
             transforms.RandomPhotometricDistort(),
-            transforms.RandomInvert(p=0.2),
+            # transforms.RandomInvert(p=0.2),
             transforms.RandomAdjustSharpness(sharpness_factor=0.3),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             transforms.Resize((200,200)),
